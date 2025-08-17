@@ -4,7 +4,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.google_client import get_service
-from app.core.constants import GOOGLE_SPREADSHEET_HEADERS
+from app.core.constants import (
+    GOOGLE_SPREADSHEET_HEADERS,
+    GOOGLE_SPREADSHEET_CREATE_JSON,
+    GOOGLE_PERMISSIONS_JSON
+)
+from app.api.validators import validate_spreadsheet_data_fits
 from app.models.charity_project import CharityProject
 
 
@@ -29,44 +34,42 @@ async def get_closed_projects(session: AsyncSession) -> List[List]:
 
 async def create_spreadsheet(title: str = "Отчёт по закрытым проектам") -> str:
     """Создание новой Google таблицы."""
-    async for aiogoogle in get_service():
-        sheets_service = await aiogoogle.discover('sheets', 'v4')
-        spreadsheet = await aiogoogle.as_service_account(
-            sheets_service.spreadsheets.create(
-                json={
-                    "properties": {"title": title},
-                    "sheets": [{"properties": {"title": "Закрытые проекты"}}]
-                }
-            )
-        )
-        return spreadsheet['spreadsheetId']
+    aiogoogle = await get_service()
+    sheets_service = await aiogoogle.discover('sheets', 'v4')
+    spreadsheet_json = GOOGLE_SPREADSHEET_CREATE_JSON.copy()
+    spreadsheet_json['properties']['title'] = title
+    spreadsheet = await aiogoogle.as_service_account(
+        sheets_service.spreadsheets.create(json=spreadsheet_json)
+    )
+    return spreadsheet['spreadsheetId']
 
 
-async def set_user_permissions(file_id: str, user_email: str):
+async def set_user_permissions(file_id: str):
     """Выдача прав доступа пользователю."""
-    async for aiogoogle in get_service():
-        drive_service = await aiogoogle.discover('drive', 'v3')
-        await aiogoogle.as_service_account(
-            drive_service.permissions.create(
-                fileId=file_id,
-                json={
-                    "type": "user",
-                    "role": "writer",
-                    "emailAddress": user_email
-                }
-            )
+    aiogoogle = await get_service()
+    drive_service = await aiogoogle.discover('drive', 'v3')
+    await aiogoogle.as_service_account(
+        drive_service.permissions.create(
+            fileId=file_id,
+            json=GOOGLE_PERMISSIONS_JSON
         )
+    )
 
 
 async def update_spreadsheet_values(spreadsheet_id: str, values: List[List]):
     """Заполнение таблицы заголовками и данными."""
-    async for aiogoogle in get_service():
-        sheets_service = await aiogoogle.discover('sheets', 'v4')
-        await aiogoogle.as_service_account(
-            sheets_service.spreadsheets.values.update(
-                spreadsheetId=spreadsheet_id,
-                range="A1",
-                valueInputOption="RAW",
-                json={"values": [GOOGLE_SPREADSHEET_HEADERS] + values}
-            )
+    validate_spreadsheet_data_fits(values)
+    aiogoogle = await get_service()
+    sheets_service = await aiogoogle.discover('sheets', 'v4')
+    total_rows = len(values) + 1
+    total_cols = len(GOOGLE_SPREADSHEET_HEADERS)
+    last_col = chr(ord('A') + total_cols - 1)
+    range_name = f"A1:{last_col}{total_rows}"
+    await aiogoogle.as_service_account(
+        sheets_service.spreadsheets.values.update(
+            spreadsheetId=spreadsheet_id,
+            range=range_name,
+            valueInputOption="RAW",
+            json={"values": [GOOGLE_SPREADSHEET_HEADERS] + values}
         )
+    )

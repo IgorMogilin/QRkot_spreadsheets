@@ -1,4 +1,3 @@
-from typing import List
 from pydantic import BaseModel
 
 
@@ -16,8 +15,4 @@ class ProjectData(BaseModel):
 
 class GoogleReportResponse(BaseModel):
     """Схема ответа при создании Google отчёта."""
-    message: str
-    spreadsheet_id: str
     spreadsheet_url: str
-    projects_count: int
-    projects: List[ProjectData]

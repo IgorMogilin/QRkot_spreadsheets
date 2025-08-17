@@ -9,3 +9,4 @@ class ErrorMessage:
     )
     NOT_UNIQUE_PROJECT_NAME = "Проект с таким именем уже существует"
     NOT_CLOSED_PROJECT = "Закрытых проектов не найдено"
+    GOOGLE_SPREADSHEET_UPDATE_ERROR = "Ошибка при заполнении таблицы данными"
