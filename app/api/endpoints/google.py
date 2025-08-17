@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.validators import (
-    check_closed_projects_exist, 
+    check_closed_projects_exist,
     validate_spreadsheet_update
 )
 from app.core.constants import URL_PREFIX_GOOGLEDRIVE
