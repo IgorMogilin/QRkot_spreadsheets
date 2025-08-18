@@ -13,6 +13,7 @@ MAX_ANYSTR_LENGTH = 100
 MINIMAL_MONEY_INVESTED = 0
 URL_PREFIX_GOOGLEDRIVE = 'https://docs.google.com/spreadsheets/d/'
 REPORT_IS_OK = 'Отчёт успешно создан'
+GOOGLE_SPREADSHEET_TITLE = 'Отчёт по закрытым проектам'
 GOOGLE_SPREADSHEET_HEADERS = [
     "ID проекта", "Название", "Описание",
     "Требуемая сумма", "Собранная сумма",

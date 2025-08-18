@@ -7,7 +7,8 @@ from app.core.error_message import ErrorMessage
 from app.core.exceptions import SpreadsheetDataTooLargeError
 from app.core.constants import (
     GOOGLE_SPREADSHEET_HEADERS,
-    GOOGLE_SPREADSHEET_CREATE_JSON
+    DEFAULT_ROW_COUNT,
+    DEFAULT_COLUMN_COUNT,
 )
 from app.models import CharityProject
 
@@ -75,12 +76,8 @@ def validate_spreadsheet_data_fits(values: List[List]):
     """Проверяет, что данные поместятся в Google таблицу."""
     total_rows = len(values) + 1
     total_cols = len(GOOGLE_SPREADSHEET_HEADERS)
-    grid_props = (
-        GOOGLE_SPREADSHEET_CREATE_JSON['sheets'][0]
-        ['properties']['gridProperties']
-    )
-    max_rows = grid_props['rowCount']
-    max_cols = grid_props['columnCount']
+    max_rows = DEFAULT_ROW_COUNT
+    max_cols = DEFAULT_COLUMN_COUNT
     if total_rows > max_rows:
         raise SpreadsheetDataTooLargeError(
             f"Данные не помещаются в таблицу: строк > {max_rows}"

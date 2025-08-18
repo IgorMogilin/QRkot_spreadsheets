@@ -7,10 +7,13 @@ from app.core.google_client import get_service
 from app.core.constants import (
     GOOGLE_SPREADSHEET_HEADERS,
     GOOGLE_SPREADSHEET_CREATE_JSON,
-    GOOGLE_PERMISSIONS_JSON
+    GOOGLE_PERMISSIONS_JSON,
+    GOOGLE_SPREADSHEET_TITLE,
+    DEFAULT_ROW_COUNT,
+    DEFAULT_COLUMN_COUNT,
 )
-from app.api.validators import validate_spreadsheet_data_fits
 from app.models.charity_project import CharityProject
+from app.core.exceptions import SpreadsheetDataTooLargeError
 
 
 async def get_closed_projects(session: AsyncSession) -> List[List]:
@@ -32,12 +35,17 @@ async def get_closed_projects(session: AsyncSession) -> List[List]:
     return sorted(data, key=lambda x: x[-1])
 
 
-async def create_spreadsheet(title: str = "Отчёт по закрытым проектам") -> str:
+async def create_spreadsheet() -> str:
     """Создание новой Google таблицы."""
     aiogoogle = await get_service()
     sheets_service = await aiogoogle.discover('sheets', 'v4')
-    spreadsheet_json = GOOGLE_SPREADSHEET_CREATE_JSON.copy()
-    spreadsheet_json['properties']['title'] = title
+    spreadsheet_json = {
+        **GOOGLE_SPREADSHEET_CREATE_JSON,
+        'properties': {
+            **GOOGLE_SPREADSHEET_CREATE_JSON['properties'],
+            'title': GOOGLE_SPREADSHEET_TITLE,
+        },
+    }
     spreadsheet = await aiogoogle.as_service_account(
         sheets_service.spreadsheets.create(json=spreadsheet_json)
     )
@@ -58,11 +66,18 @@ async def set_user_permissions(file_id: str):
 
 async def update_spreadsheet_values(spreadsheet_id: str, values: List[List]):
     """Заполнение таблицы заголовками и данными."""
-    validate_spreadsheet_data_fits(values)
     aiogoogle = await get_service()
     sheets_service = await aiogoogle.discover('sheets', 'v4')
     total_rows = len(values) + 1
     total_cols = len(GOOGLE_SPREADSHEET_HEADERS)
+    if total_rows > DEFAULT_ROW_COUNT:
+        raise SpreadsheetDataTooLargeError(
+            f"Данные не помещаются в таблицу: строк > {DEFAULT_ROW_COUNT}"
+        )
+    if total_cols > DEFAULT_COLUMN_COUNT:
+        raise SpreadsheetDataTooLargeError(
+            f"Данные не помещаются в таблицу: колонок > {DEFAULT_COLUMN_COUNT}"
+        )
     last_col = chr(ord('A') + total_cols - 1)
     range_name = f"A1:{last_col}{total_rows}"
     await aiogoogle.as_service_account(
